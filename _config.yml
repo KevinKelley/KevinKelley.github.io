@@ -1,1 +1,7 @@
+title: kevin kelley
+description: engineer@large
+show_downloads: false
+google_analytics:
 theme: jekyll-theme-architect
+plugins:
+  - jekyll-sitemap
