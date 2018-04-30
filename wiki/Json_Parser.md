@@ -2,7 +2,7 @@
 layout: default
 ---
 
-Disclaimer again; this is meant to be a reasonably-sized example, not a working parser.  Use it to understand the [[Parser Monad]], not to actually parse Json. [[source code]]
+Disclaimer again; this is meant to be a reasonably-sized example, not a working parser.  Use it to understand the [Parser Monad](/wiki/Parser_Monad.html), not to actually parse Json. [source code](/wiki/source_code.html)
 
 Overview
 ===
@@ -11,6 +11,7 @@ We've got infrastructure out the wazoo by now, and I don't want to belabor the d
 So, without spending much time at it, here's how I write that grammar using the monad:
 
 
+```
   **
   ** Parser monad that recognizes Json (json.org) grammar (assuming no extraneous whitespace)
   **
@@ -40,7 +41,9 @@ So, without spending much time at it, here's how I write that grammar using the 
     |State->Result| nothing () { unit("") }
     ** eN, e+N, e-N, EN, E+N, E-N all good; this parses the "e" and optional sign
     |State->Result| e() { seq(oneOf("eE"), or(oneOf("+-"), nothing)) }
+```
 
+```
     // generator-methods syntax (above) is convenient, but you have to break the
     // mutual recursion somewhere.  So 'value' will, instead of immediately creating
     // a parser, will instead create a closure that when evaluated during
@@ -62,7 +65,9 @@ So, without spending much time at it, here's how I write that grammar using the 
       ))))))
       .call(inp)
     }
+```
 
+```
     |State->Result| item() {
       |State in->Result| {
         if (in.empty) return Result.Error(in)
@@ -71,7 +76,9 @@ So, without spending much time at it, here's how I write that grammar using the 
         return Result.Ok(char.toChar, state) // return char and state
       }
     }
+```
 
+```
     ** parse any single character that satisfies the test predicate
     |State->Result| satisfy(|Int->Bool| test) {
       bind(item, |Str x-> |State->Result| | {
@@ -81,14 +88,17 @@ So, without spending much time at it, here's how I write that grammar using the 
     |State->Result|  oneOf(Str cs) { satisfy(|Int c->Bool|{ cs.any|Int ch->Bool|{c==ch}}) }
     |State->Result| noneOf(Str cs) { satisfy(|Int c->Bool|{!cs.any|Int ch->Bool|{c==ch}}) }
     |State->Result|   char(Int ch) { satisfy(|Int c->Bool|{ch == c}) }
+```
 
+```
     |State->Result| keyword(Str s) {
       (s.isEmpty)
         ? unit("")
         : seq(char(s[0]), keyword(s.slice(1..-1)))
     }
+```
 
-
+```
     Void main() {
       echo(str.call(State("\"a\"")))
       echo(number.call(State("123")))
@@ -102,7 +112,7 @@ So, without spending much time at it, here's how I write that grammar using the 
       echo(object.call(State("""{"ident":123,"value":-456e8}""")))
     }
   }
-
-I tried to be complete and correct in the grammar rules; and in fact the tests here do succeed on these simple inputs.  I haven't bothered to verify it any further, and I didn't handle the two issues I mentioned in [[Bitops Parser]] -- extraneous whitespace, and generating values from the parse.
+```
+I tried to be complete and correct in the grammar rules; and in fact the tests here do succeed on these simple inputs.  I haven't bothered to verify it any further, and I didn't handle the two issues I mentioned in [Bitops Parser](/wiki/Bitops_Parser.html) -- extraneous whitespace, and generating values from the parse.
 
 But hey, neat toy!  Getting through the setup of the parser monad took a while, but once it's in place, we can generate a fairly complex parser, fairly concisely.  No YACC, no ANTLR, no external tools at all: just one small set of functions, available as a mixin.

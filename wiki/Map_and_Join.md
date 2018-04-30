@@ -2,10 +2,11 @@
 layout: default
 ---
 
-This is the second or third section in my exploration of [[Monads]], dealing with the relation of monads to the perhaps more familiar *map* and *join* dual.  I'm hurrying forward to the [[Parser Monad]], so this will be brief: a quick comment and some code.  I intend to return to this later, to work out more of the detail.
+This is the second or third section in my exploration of [Monads](/wiki/Monads.html), dealing with the relation of monads to the perhaps more familiar *map* and *join* dual.  I'm hurrying forward to the [Parser Monad](/wiki/Parser_Monad.html), so this will be brief: a quick comment and some code.  I intend to return to this later, to work out more of the detail.
 
 According to (?Wadler?) the following 8 relations are equivalent to the three monad laws.  When talking about lists (sequences) these seem more familiar, but all can be expressed in terms of the monadic 'unit' and 'bind'.
 
+```
     // id is the identity function: |Obj? x->Obj?| { x }
     // . is function composition: f . g :: f(g(x))
     map id = id
@@ -16,9 +17,10 @@ According to (?Wadler?) the following 8 relations are equivalent to the three mo
     join . map unit = id
     join . map join = join . join
     m * k = join (map k m)
-
+```
 Some code here, where I start to attempt to do that: given a Monad type defined by the mixin's 'unit' and 'bind', express the 'map' and 'join' (and hopefully some more goodness) as derived properties.
 
+```
   mixin Monad {
     abstract Func unit(Obj? a)
     abstract Func bind(Func m, |Obj?->Func| f)
@@ -181,7 +183,7 @@ Some code here, where I start to attempt to do that: given a Monad type defined 
       echo(crossProduct((1..3).toList, "a b c".split))
     }
   }
-
+```
 The above code works, but there's more to be done: characterizing it, extending it for related operators, defining a useful Seq type (maybe lazy) that the monad can build on...
 
-For now as I said I'm in a hurry to get to the [[Parser Monad]].  Cheers!
+For now as I said I'm in a hurry to get to the [Parser Monad](/wiki/Parser_Monad.html).  Cheers!

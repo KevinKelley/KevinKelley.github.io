@@ -2,7 +2,7 @@
 layout: default
 ---
 
-These [[Monads]] pages derive pretty directly from one or another of the resources listed below.  There are a lot more out there; these are what I found to be the most important, or most relevant, to what I am trying to do.  This has been a learning experience for me; I've attempted to survey the history and current state of the art as relates to monads, and to codify the many known variations into Fantom language examples.
+These [Monads](/wiki/Monads.html) pages derive pretty directly from one or another of the resources listed below.  There are a lot more out there; these are what I found to be the most important, or most relevant, to what I am trying to do.  This has been a learning experience for me; I've attempted to survey the history and current state of the art as relates to monads, and to codify the many known variations into Fantom language examples.
 
 A Fantom **monad library** would hopefully be able to address the various examples shown here, but would need to address some tradeoffs between genericity and closure type safety; the **comprehensions syntax** issue comes up too, when you think about making monads generally useful in Fantom.
 

@@ -2,19 +2,23 @@
 layout: default
 ---
 
-This is part one of the [[Monads]] pages.
+This is part one of the [Monads](/wiki/Monads.html) pages.
 
 Start with a snippet to explicate: I'm working from the Philip Wadler paper **Monads for functional programming**, which is an excellent intro into the what and why of Monads, by the man who brought the concept to life.  That paper expresses its examples in a Haskell-like syntax, but it's kept small and clear.
 
 From the paper, we start with
 
+```
   data   Term = Con Int | Div Term Term
+```
 
 and
 
+```
   eval         :: Term -> Int
   eval(Con a)   = a
   eval(Div t u) = eval t &divide; eval u
+```
 
 which first declares a data type 'Term', which is made by either the 'Con Int'  or the 'Div Term Term' constructor.
 
@@ -24,6 +28,7 @@ Then: 'eval' is declared to be a function that accepts a 'Term' and returns an '
 
 In a Java-like language, that would probably be modeled as
 
+```
   interface Term {
     int eval()
   }
@@ -37,24 +42,31 @@ In a Java-like language, that would probably be modeled as
     public Div(Term t, Term u) { this.t=t; this.u=u; }
     public int eval() { return t.eval / u.eval; }
   }
+```
 
 where the expression tree is built in the constructors, and evaluated by a call to 'eval'.  All very fine and handy.
 
-I'm going to do it a bit different, though.  The point of this exercise is to follow along, in Fantom, with the various examples and demonstrations of monads that I've found, for the purpose of understanding what monads are, and to try to come to grips with turning theory into practice.  Since the [[theory of monads]] is mostly coming from the functional side of the world, the examples too will nearly always be functional, not so much object-oriented.  Monad theory is complicated enough that I'm not ready to try to translate in my head from functional to OO style, while I'm learning it.  Luckily, Fantom has good support for functional styles: closures are easy to use and powerful, and come with type inference capabilities too, which might be helpful.
+I'm going to do it a bit different, though.  The point of this exercise is to follow along, in Fantom, with the various examples and demonstrations of monads that I've found, for the purpose of understanding what monads are, and to try to come to grips with turning theory into practice.  Since the [theory of monads](/wiki/theory_of_monads.html) is mostly coming from the functional side of the world, the examples too will nearly always be functional, not so much object-oriented.  Monad theory is complicated enough that I'm not ready to try to translate in my head from functional to OO style, while I'm learning it.  Luckily, Fantom has good support for functional styles: closures are easy to use and powerful, and come with type inference capabilities too, which might be helpful.
 
 So anyway.  Here's how I'm going to start, translating that Haskell-style example above into Fantom.  Instead of defining object classes, I'm going to define **computations**: functions that produce a value, implemented as Fantom closures.  So that data type definition in Haskell:
 
+```
   data   Term = Con Int | Div Term Term
+```
 
 gets turned into two constructor functions:
 
+```
   Func Con(Int v) { |->Int| { v } }
 
   Func Div(Func t, Func u) { |->Int| { t.call / u.call } }
+```
 
 --construct a **constant int** computation by returning a closure that evaluates to that int; and construct a **division** expression that evaluates its arguments and returns the result of dividing them.  Fun!  Testing such a thing looks like this:
 
+```
   echo( Div(Div(Con(1972),Con(2)), Con(23)) .call)
+```
 
 which prints **42**.
 
@@ -62,26 +74,29 @@ Defining the monad
 ------------------
 That's dandy; we have a way of doing functional composition using closures that can mimic our Java-like object-composition example.  But where's the monad?  For that matter, what is a monad?
 
-Coming from the work of **Moggi** and then **Wadler**, a type is a monad if it obeys three [[monad laws]]:
+Coming from the work of **Moggi** and then **Wadler**, a type is a monad if it obeys three [monad laws](/wiki/monad_laws.html):
 - left unit
 - right unit
 - bind
 
-refer to [[monad laws]] for the definitions of how those three things have to act; a quick glossing-over summary is that, for a type to be a monad, it has to have a **unit** (function that brings a basic value into the monad, without changing it) and a **bind** (function that connects two monadic values together).
+refer to [monad laws](/wiki/monad_laws.html) for the definitions of how those three things have to act; a quick glossing-over summary is that, for a type to be a monad, it has to have a **unit** (function that brings a basic value into the monad, without changing it) and a **bind** (function that connects two monadic values together).
 
 Since I've chosen, for these example pages, to deal in *computations* -- that is, closures that can be composed together, and which compute some value -- then, I'll need a monadic type that can create, and combine, those computations.  So:
 
+```
   class IdentityMonad
   {
     Func unit(Int a) { |->Int| {a} }
 
     Func bind(Func m, |Int->Func| f) { |->Int| { f(m()).call } }
   }
+```
 
 That is, the identity monad can turn a basic Int into a computation that produces the int; and can bind a monadic value (an int-producing computation) to an int-consumer by extracting the computed Int and calling the consumer function with it.
 
 Given that identity monad, our example code looks like this:
 
+```
   class Expr : IdentityMonad
   {
     Func Con(Int v) { unit(v) }
@@ -95,6 +110,7 @@ Given that identity monad, our example code looks like this:
       echo( Div(Div(Con(1972),Con(2)), Con(23)) .call)
     }
   }
+```
 
 So.  Weird, maybe, but almost pretty.  It works, and again prints **42**.
 
@@ -104,6 +120,7 @@ Exceptions Monad
 ----
 This is just the first simple intro page and it's already running long, so I'll leave off justifying all this and jump into the examples.  First consider, the above example doesn't consider errors, such as divide-by-zero.  Building error-handling into the non-monadic example requires review and modification to the whole code; in the monad we can do this:
 
+```
   class ExceptionMonad : IdentityMonad
   {
     Func raise(Str e) { |->Obj?| {e} }
@@ -124,6 +141,7 @@ This is just the first simple intro page and it's already running long, so I'll 
       echo( Div(Con(1), Con(0)) .call)
     }
   }
+```
 
 --that is, change the **bind** function to check for error and if there is one, halt and return it; only if the computation succeeds does the bind operation continue to the consumer-function.  Then functions like 'Div' can raise an error if necessary, and functions that don't need to know about it don't have to deal with it.  We've just implemented a form of Exceptions, using a monad, in a few lines of code.
 
@@ -133,6 +151,7 @@ Dealing with mutable state is a big deal in the **FP** style; earlier functional
 
 Let's define **State** as a const value representing a program's state at some instant in time; the **const** satisfies the functional requirement that values not mutate.  Changing state as the computation moves forward is handled explicitly by creating a new state.
 
+```
   const class State
   {
     const Int count
@@ -141,9 +160,11 @@ Let's define **State** as a const value representing a program's state at some i
     State inc() { make(count+1) }  // create a new State with value 1 greater than this's
     override Str toStr() { "#$count" }
   }
+```
 
 Now the state-transforming expression-monad.  For this we complicate things by having the monadic functions accept a State as input, and return not just the computed value, but instead the computed value paired with a new State (in a 2-element array).
 
+```
   class StateMonad
   {
     **
@@ -192,8 +213,11 @@ Now the state-transforming expression-monad.  For this we complicate things by h
       echo( Div(Div(Con(1972),Con(2)), Con(23)) .call(State.def))
     }
   }
+```
 yields
+```
   [42, #5]
+```
 --the answer's '42' and it took 5 ticks.
 
 Okay!  That was fun, in a masochistic kind of way.  I think it makes explicit how much we take for granted in declarative (non-functional) languages.  This seems like a lot of contorting to get something we already have, But!  There's at least one reason to be aware of this kind of thing:  threads, multiprocessing, Actors, all that.  What this StateMonad does is simulate mutable state without actually having any.  Everything here is pure, functional, thread-safe, suitable for safely being passed among processors without worrying about conflicts and locks.
@@ -206,6 +230,7 @@ Output Monad
 ------
 One more example to complete our triad of basic monads.  Consider output: suppose we want to log some output at every step along the way, instead of just calculating and returning the result of the computation.  Again without monads the change pervades the source, but with a proper monad it's localized to a few places.
 
+```
   **
   ** simulate output by returning a string along with the computation's result.
   **
@@ -264,13 +289,16 @@ One more example to complete our triad of basic monads.  Consider output: suppos
       echo( Div(Div(Con(1972),Con(2)), Con(23)) .call)
     }
   }
+```
 --which again follows the pattern; most of the magic happens in the sequencing of 'bind's.  Running this yields
+```
   [eval(Con 1972) ==> 1972
   eval(Con 2) ==> 2
   eval(Div 1972 2) ==> 986
   eval(Con 23) ==> 23
   eval(Div 986 23) ==> 42
   , 42]
+```
 -- the steps messages, accumulated and paired with the result value.
 
 
@@ -281,4 +309,4 @@ One more example to complete our triad of basic monads.  Consider output: suppos
 
 
 
-And that's that.  Next I'll look at the relation of monads to [[Map and Join]]. (Or return to the [[Monads]] page)
+And that's that.  Next I'll look at the relation of monads to [Map and Join](/wiki/Map_and_Join.html). (Or return to the [Monads](/wiki/Monads.html) page)

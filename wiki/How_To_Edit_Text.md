@@ -25,4 +25,4 @@ pre>
 <pre
 
 
-There are more advanced features here: [[How To Use Advanced Features]]
+There are more advanced features here: [How To Use Advanced Features](/wiki/How To Use Advanced Features.html)

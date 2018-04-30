@@ -2,7 +2,7 @@
 layout: default
 ---
 
-It's been said that parsers are the classic example of the power of monads.  Since I'm always interested in parsing techniques, developing a *parser monad* in Fantom, along the lines laid down by Hutton and Meijer in their Haskell work (see [[theory of monads]] for references), will be an interesting learning experiment: some neat code will be seen, some old neurons will be burned, and at the end of the day maybe we'll know something we didn't before.  Hi ho.
+It's been said that parsers are the classic example of the power of monads.  Since I'm always interested in parsing techniques, developing a *parser monad* in Fantom, along the lines laid down by Hutton and Meijer in their Haskell work (see [theory of monads](/wiki/theory_of_monads.html) for references), will be an interesting learning experiment: some neat code will be seen, some old neurons will be burned, and at the end of the day maybe we'll know something we didn't before.  Hi ho.
 
 The Setup
 ====
@@ -12,8 +12,9 @@ The type of the monad is '|State -> Result|': that is, functions that take a cur
 
 State
 ----
-The parser monad is a lot like the [[State Monad]], where the state being processed is the input string to be parsed.  Since functional style treats values as constant and handles transformation of values explicitly, we'll represent the state at any point in the parse with a 'State' class like this:
+The parser monad is a lot like the [State Monad](/wiki/State_Monad.html), where the state being processed is the input string to be parsed.  Since functional style treats values as constant and handles transformation of values explicitly, we'll represent the state at any point in the parse with a 'State' class like this:
 
+```
   const class State {
     const Int pos
     const Str remaining
@@ -22,12 +23,14 @@ The parser monad is a lot like the [[State Monad]], where the state being proces
     This advance(Int n) { make((n&lt;remaining.size)? remaining.slice(n..-1): "", pos+n) }
     override Str toStr() { "@$pos:'$remaining'" }
   }
+```
 
 It's 'const' so individual states don't mutate; it holds an int 'pos' representing current position in the string being parsed, and a string 'remaining' which is the unparsed input.  Advancing the state is done by returning a new state, modified appropriately.  'empty' is true if there's no more input; and 'toStr' shows the current position and the remaining input.
 
 Result
 ----
 
+```
   **
   ** Result is the result of a parse, combining a parsed value and
   ** the remaining state
@@ -50,9 +53,11 @@ Result
     **
     static Result Error(State at) { Error(at) }
   }
+```
 
 **Ok** and **Error** are the obvious value-holder classes:
 
+```
   const class Ok : Result {
     const Obj? v;
     const State s;
@@ -64,12 +69,13 @@ Result
     new make(State at) {this.at=at}
     override Str toStr() { "Error at $at" }
   }
+```
 
 Notice that we're not actually saying anything yet about the result value, other than that it's an 'Obj?'.  The parser monad can equally well be used as an evaluator, immediately executing its function, or as an AST-tree generator, creating a structure of the parsed program for later processing.
 
 The Monad
 ====
-First, a word about design choices: the parser monads described by Wadler, and by Hutton and Meijer (see [[theory of monads]] for references) are often defined to return an array of results, rather than a single result.  This makes powerful parsers, but it brings up the problem of what to do with ambiguity: ambiguous grammars will then yield multiple results for a given input.  Good, if you need it; but typically for programming languages you want to be unambiguous, and either yield a single successful parse or a failure.
+First, a word about design choices: the parser monads described by Wadler, and by Hutton and Meijer (see [theory of monads](/wiki/theory_of_monads.html) for references) are often defined to return an array of results, rather than a single result.  This makes powerful parsers, but it brings up the problem of what to do with ambiguity: ambiguous grammars will then yield multiple results for a given input.  Good, if you need it; but typically for programming languages you want to be unambiguous, and either yield a single successful parse or a failure.
 
 For my examples here, therefore, I'm limiting myself to single results.  The parser monad isn't much different either way, but using it is simpler when you don't need to deal with selecting among ambiguity.
 
@@ -77,14 +83,17 @@ Unit and Bind
 ----
 So!  Again, our parser monad will be defined for functions of type |State->Result|.  First we need a *unit*:
 
+```
   **
   ** monadic unit: convert a basic value into a parser-monadic-function
   ** by wrapping it into a Result along with the then-current state.
   **
   |State->Result| unit(Obj v) { |State st->Result|{Result.Ok(v, st)} }
+```
 
 then a *bind*.
 
+```
   **
   ** monadic bind: bind a parser monad to a combining-function.
   ** return a bound computation which will run the monad in a
@@ -105,14 +114,17 @@ then a *bind*.
                                 // and return its result
     }
   }
+```
 
 a **zero** is going to be useful sometimes, to represent a parser-monad that always fails:
 
+```
   **
   ** return the parser monad's "zero" function: a parser that
   ** always immediately fails, capturing the state at the fail point.
   **
   |State->Result| zero() { |State inp->Result| {Result.Error(inp)} }
+```
 
 Quoting Wadler in *Monads for FP*:
 > The empty parser and sequencing correspond directly to *unit* and *bind*, and the monads laws reflect that sequencing is associative and has the empty parser as a unit. The failing parser and alternation correspond to *zero* and &oplus;, which satisfy laws reflecting that alternation is associative and has the failing parser as a unit, and that sequencing distributes through alternation.
@@ -124,6 +136,7 @@ Combinators
 ----
 Now we can start building some parser functionality on top of this.  Let's have a function **or**, representing biased choice: 'p := or(t,u)' creates a new  parser 'p' which chooses between parsers 't' and 'u': if 't' succeeds, return its result; if not, try 'u'.
 
+```
   **
   ** combinator that tries each parser in turn,
   ** returning the first to succeed.
@@ -136,9 +149,11 @@ Now we can start building some parser functionality on top of this.  Let's have 
       return Result.Error(inp)
     }
   }
+```
 
 Sequencing of parsers:
 
+```
   **
   ** return a parser that executes 'p', followed by 'q', and
   ** returns their results in a list.  Parse succeeds only if
@@ -167,13 +182,15 @@ Sequencing of parsers:
       unit([x,y])
     })})
   }
+```
 
-Slightly more complicated are 'chainl1' and 'chainr1', for left- or right-associative lists of operator-separated expressions; and 'sepby' and 'bracket', for things like comma-separated lists, or bracketed expressions: see the [source code]``.
+Slightly more complicated are 'chainl1' and 'chainr1', for left- or right-associative lists of operator-separated expressions; and 'sepby' and 'bracket', for things like comma-separated lists, or bracketed expressions: see the [source code]().
 
 Parsers
 ----
 With those, we have a pretty complete set of parser-constructs.  It should be easy enough to use them to build actual, useful parsers; and in fact it is -- actually, we need one more thing.
 
+```
   **
   ** 'item' parses a single item from the input stream: this could be
   ** a token-grabber, if we want to use a lexical stage; but for many
@@ -188,9 +205,11 @@ With those, we have a pretty complete set of parser-constructs.  It should be ea
       return Result.Ok(char.toChar, state) // return char (as Str) and state
     }
   }
+```
 
 'item' parses a single character (any character) from the input, updates the state, and returns a result consisting of the one-character string and remaining input.
 
+```
   **
   ** parse any single character that satisfies the test predicate
   **
@@ -199,9 +218,11 @@ With those, we have a pretty complete set of parser-constructs.  It should be ea
       (test(x[0])) ? unit(x) : zero
     })
   }
+```
 
 'satisfy' parses a single character, but only if it passes the 'test' predicate: otherwise this parser returns a fail result.  With those, we can have these:
 
+```
   **
   ** character parsers: match a single char, according to some predicate.
   **
@@ -212,9 +233,10 @@ With those, we have a pretty complete set of parser-constructs.  It should be ea
   |State->Result|  lower()       { satisfy(|Int c->Bool|{('a'..'z').contains(c)}) }
   |State->Result|  upper()       { satisfy(|Int c->Bool|{('A'..'Z').contains(c)}) }
   |State->Result| letter()       { or(lower,upper) }
+```
 
 Neat!
 
 Okay, that pretty well covers the structure and layout of the parser monad.  Getting this far, coming to grips with the concepts, trying to understand what the heck's really going on in those Haskell examples, has been a bit of a mind-blow.  There's something pretty powerful going on here, somewhere.
 
-Of course it's no good if it doesn't do some good!  So with that thought in mind, for a couple simple test cases, have a look at the [[Bitops Parser]] and the [[Json Parser]].
+Of course it's no good if it doesn't do some good!  So with that thought in mind, for a couple simple test cases, have a look at the [Bitops Parser](/wiki/Bitops_Parser.html) and the [Json Parser](/wiki/Json_Parser.html).
