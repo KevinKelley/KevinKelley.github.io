@@ -1,0 +1,202 @@
+---
+layout: default
+---
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 Transitional//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="generator" content="Kevin's Fingers 1.0" />
+
+<style type="text/css">
+  @import url(kelleysoft.css);
+  body {background-color:#fee;}
+</style>
+
+<script language="JavaScript1.2" src="toc.js" type="text/javascript"></script>
+
+
+<title>Pfui User's Guide</title> </head>
+<body>
+
+<div id="header">
+  <h1>Pfui User's Guide</h1>
+  <!--<span id="author"></span><br />
+  <span id="email"><tt><a href="mailto:kevin@kelleysoft.com"></a></tt></span><br />  -->
+  <span id="revision">version 1,</span> June 2009
+
+  <div id="toc">
+    <div id="toctitle">Table of Contents</div>
+    <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
+  </div>
+</div>
+
+
+
+<h2> Introduction </h2>
+ <p>A brief introduction to the Pfui application and its purpose ...</p>
+
+<h2> Getting Started </h2>
+ <h3> Pfui application interface </h3> <p>  </p>
+  <h4> GrammarView </h4> <p>  </p>
+   <h5> Main menu </h5> <p>  </p>
+
+   <h5> Toolbar </h5> <p>  </p>
+    <h6> New, Open, Save </h6> <p>  </p>
+    <h6> Cut, Copy, Paste </h6> <p>  </p>
+    <h6> Parse </h6>
+      <p>Using this view's grammar language, parse the input text and create a parse tree.</p>
+    <h6> Transform </h6>
+      <p>Transform the view's parse tree into a canonical form.</p>
+    <h6> Generate </h6>
+      <p>Create a file containing a serialized Grammar initializer, which can be used to make a parser for this view's language.</p>
+    <h6> Run </h6>
+      <p>open a new View, using this view's generated grammar as its language.  </p>
+
+   <h5> terminals and nonterminals </h5>
+    <p>after parsing, shows the terminals and nonterminals discovered in the input.</p>
+
+   <h5> editor area </h5>
+    <p>standard text area for entering input to be parsed by the current language.</p>
+
+   <h5> output area </h5>
+    <p>shows the results of the most recent action.  One of:</p>
+    <h6> Partial Parse Trees view </h6>
+      <p>shows all the parse sub-trees that were found.</p>
+    <h6> Parse Trees view </h6>
+      <p>shows the completed parse tree (if the grammar is ambiguous, there will be multiple parse trees).</p>
+    <h6> Generated Grammar view </h6>
+      <p>shows a table view of the generated Grammar class initializer, after transformations.</p>
+
+<h2> BNF Bootstrap grammar </h2>
+  <p>When you start the Pfui application, or when you choose File->New, you'll be using the BNF bootstrap grammar.  This is indicated in the title bar -- it'll say <strong>Pfui - BnfBootstrap</strong>.  Here's the language it understands: </p>
+<div class="listingblock"><div class="content"><pre><tt>
+  BNF       = Rule* ;
+  Rule      = Lhs /[:=]/ Rhs ";" ;
+  Lhs       = Nonterm ;
+  Rhs       = Sentences ;
+  Sentences = Sentence ("|" Sentences)* ;
+  Sentence  = Item* ;
+  Item      = Grouped Qualifier?
+            | Nonterm
+            | Literal
+            ;
+  Qualifier = "*" | "+" | "?" ;
+  Grouped   = "(" Sentences ")" ;
+  Nonterm   = /[a-zA-Z_]+|<[a-zA-Z_]+>/ ;
+  Literal   = /'((\\')|([^']))*'|"((\\")|([^"]))*"/ ;
+</tt></pre></div></div>
+
+<p> A BNF grammar is a set of zero or more rules.  A rule is a left-hand side, an assignment operator, and a righthand side, followed by a semicolon. </p>
+
+<p> Literals are quoted, with either single or double quotes.  Regular expressions are wrapped with forward-slashes.  The assignment operator is either <tt>:</tt> or <tt>=</tt>; <tt>|</tt> separates alternatives.  Parentheses express grouping; <tt>*</tt>, <tt>+</tt>, and <tt>?</tt> represent <tt>zero or more</tt>, <tt>one or more</tt>, and <tt>zero or one</tt>. </p>
+
+
+<h2> Tokenizing the input </h2>
+ <h3> literals </h3>
+  <p> Literals are wrapped in quotes -- either single tick or double-quote.
+      To include a quote character in a literal, use the single-quote mode.
+      Escaped quote characters are not yet supported.</p>
+
+ <h3> regular expressions </h3>
+  <p> Regexes are enclosed between a pair of forward-slash characters: </p>
+      <div class="listingblock"><div class="content"><pre><tt> id : /[a-zA-Z]+/; </tt></pre></div></div>
+  <p> To include a forward-slash in a regular expression, escape it with a backslash: </p>
+      <div class="listingblock"><div class="content"><pre><tt> SLcomment : /\/\/[^\r\n]*/; </tt></pre></div></div>
+  <p> Pfui regular expressions are implemented with Fan Regex, so any construct that is valid
+      in the underlying Fan rumtime should be okay here.</p>
+
+ <h3> RegexLex tokenizer </h3>
+  <p> Pfui input is tokenized according to the literals and regular expressions you provide. </p>
+  <p> In cases where the input could be tokenized in more than one way, Pfui uses <em>Earliest-first,
+      longest-next</em> as its algorithm.  That is, at any point in tokenizing, the next token
+      will be the one whose start character occurs earliest; if two or more possible tokens
+      start at the same character, the longest is taken. Tokenizing then continues with the
+      next character after the end of the current token.</p>
+  <p> Characters which can't be matched by any token are currently ignored. </p>
+
+ <h3> Out-of-band tokens </h3>
+  <p> It's usually necessary to have a way to view the input stream differently, depending on
+      the context.  For instance comments need to be ignored by a code-generating compiler,
+      but they need to be accessible to an editor.  In Fan, Fandoc comments (groups of single-line
+      comments started with <t> ** </t>) need to be passed through for inclusion in the
+      generated pod, but only when they occur in the proper spot. </p>
+  <p> Multi-line strings, and DSLs (domain-specific language blocks, inclusions of source to
+      an arbitrary language enclosed in <tt>&lt;|</tt> ... <tt>|&gt;</tt>, are passed unchanged
+      to the proper parser), need to be visible as a single token to the compiler, but should
+      be handled differently in an editor. </p>
+  <p> In ANTLR this is handled with channels, specifying that some token types are in a
+      hidden channel where they're accessible from code but invisible to the normal lex function. </p>
+  <p> I'm trying to avoid clogging up the grammar with special lexical considerations.  Right
+      now Pfui creates a single lexical analyzer for a grammar, which can recognize all of the
+      token types inferred from the specified literals and regular expressions. </p>
+  <p> It's not a big step, though, to <em> Grammar-directed tokenizing </em>: since the lexical
+      elements are specified directly in the grammar, and since the Pfui parser knows (from its
+      <tt>FIRST</tt> sets) what it should expect at any point in the parse, it should be
+      straightforward to make the tokenizer return only tokens that are valid at the current
+      point in the parse. </p>
+
+  <p> More Later: &nbsp; <tt> Mary Had a Little LLama </tt> example. </p>
+
+
+<h2> The Earley Parser </h2>
+ <h3> Chart Parsers </h3>
+  <h4> the CYK algorithm </h4>
+    <p>  </p>
+  <h4> the Earley algorithm </h4>
+    <p>  </p>
+ <h3> PEP (Earley Parser) </h3>
+ <h3> Core classes </h3>
+   <p> Refer to the Fandoc source code documentation for more detailed (that is, existing)
+       documentation of the PEP classes. </p>
+
+  <h4> Grammar </h4>
+   <h5> BnfBootstrap </h5>
+  <h4> ParseTree </h4>
+   <h5> BnfParseTree </h5>
+  <h4> Category </h4>
+  <h4> Rule </h4>
+   <h5> DottedRule </h5>
+  <h4> Edge </h4>
+  <h4> Chart </h4>
+  <h4> EarleyParser </h4>
+    <p>  </p>
+  <h4> ParserListener </h4>
+   <h5> optionSet </h5> <p>  </p>
+   <h5> parserSeeded </h5> <p>  </p>
+   <h5> edgePredicted </h5> <p>  </p>
+   <h5> tokenScanned </h5> <p>  </p>
+   <h5> edgeCompleted </h5> <p>  </p>
+   <h5> parseComplete </h5> <p>  </p>
+   <h5> parseError </h5> <p>  </p>
+  <h4> ParserEvents </h4>
+   <h5> TokenEvent </h5> <p> Generated when a token is scanned from the input stream. </p>
+   <h5> EdgeEvent </h5> <p> Generated when an edge is added to the parser's chart: either a <strong>prediction</strong> or a <strong>completion</strong> </p>
+   <h5> OptionEvent </h5> <p> A parser option was changed -- not used currently. </p>
+   <h5> ErrorEvent </h5> <p> Should indicate a parse error. </p>
+  <h4> ParserOptions </h4>
+
+<h2> Creating a Grammar </h2>
+
+<h2> Using your parser </h2>
+
+
+<!-- Scraps -->
+<div id="preamble">
+<div class="sectionbody">
+
+  <div class="ilist">
+   <ul><li><p>  </p>
+  </li><li><p>  </p>
+  </li></ul></div>
+
+  <div class="listingblock"><div class="content"><pre><tt>  </tt></pre></div></div>
+
+</div>
+</div>
+
+
+
+<div id="footer"><div id="footer-text">Version 1<br />Last updated 2009-06-21</div></div>
+</body></html>
